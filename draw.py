@@ -43,10 +43,6 @@ def drawText(text, coords, font, screen):
 	screen.blit(textSurface, textRect)
 
 
-def init():
-	ball = pygame.image.load('intro_ball.gif')
-	ballrect = ball.get_rect()
-
 
 def loop():
 	speed = [2, 2]

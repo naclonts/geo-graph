@@ -111,7 +111,6 @@ if __name__ == '__main__':
 
 
 	# Display
-	draw.init()
 	screen = pygame.display.set_mode(draw.size)
 	clock = pygame.time.Clock()
 	pygame.font.init()
