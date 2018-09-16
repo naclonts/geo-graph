@@ -87,7 +87,7 @@ class Graph:
 	def __iter__(self):
 		return iter(self.vertices.values())
 
-	def breadthFirstSearch(self, start):
+	def breadthFirstSearch(self, start, depthFirst=False):
 		"""BFS generator yielding each vertex as it is explored."""
 		self.searching = True
 
@@ -101,7 +101,10 @@ class Graph:
 		discovered = collections.deque()
 		discovered.append(start)
 		while len(discovered) > 0:
-			u = discovered.popleft()
+			if depthFirst:
+				u = discovered.pop()
+			else:
+				u = discovered.popleft()
 			yield u
 
 			for v in u.getConnections():
@@ -113,6 +116,30 @@ class Graph:
 			u.state = VertexState.COMPLETELY_EXPLORED
 
 		self.searching = False
+
+	def depthFirstSearch(self, start):
+		"""DFS generator. Yields each explored vertex."""
+		self.searching = True
+
+		# initialize structure
+		for u in self:
+			u.state = VertexState.UNDISCOVERED
+		for u in self:
+			if u.state == VertexState.UNDISCOVERED:
+				# new component
+				dfs = self._dfs(u)
+				yield from dfs
+
+		self.searching = False
+
+	def _dfs(self, u):
+		u.state = VertexState.DISCOVERED
+		yield u
+		for v in u.getConnections():
+			if v.state == VertexState.UNDISCOVERED:
+				v.parent = u
+				yield from self._dfs(v)
+		u.state = VertexState.COMPLETELY_EXPLORED
 
 
 def distanceBetweenPoints(lat1, lon1, lat2, lon2):
@@ -171,7 +198,7 @@ def findCityVertice(graph, cityName):
 
 
 if __name__ == '__main__':
-	with open('cities.json') as f:
+	with open('cities_partial.json') as f:
 		cities = json.load(f)
 
 	
@@ -180,10 +207,9 @@ if __name__ == '__main__':
 		return distanceBetweenPoints(
                     city1['latitude'], city1['longitude'],
                     city2['latitude'], city2['longitude']
-                ) < 250
+                ) < 1000
 
 	g = graphConnectConditional(cities, withinMiles)
-	# g.print()
 
 
 	# Display
@@ -202,9 +228,10 @@ if __name__ == '__main__':
 	draw.drawCities(g, highlightEdge, screen, font)
 	pygame.display.flip()
 
-	# initialize BFS
-	start = findCityVertice(g, 'Miami')
-	bfs = g.breadthFirstSearch(start)
+	# initialize search
+	start = findCityVertice(g, 'New York')
+	# bfs = g.breadthFirstSearch(start)
+	dfs = g.depthFirstSearch(start)
 
 	done = False
 	finishedDrawing = False
@@ -215,13 +242,14 @@ if __name__ == '__main__':
 				done = True
 
 		# process vertex u here
-		u = next(bfs, None)
+		u = next(dfs, None)
 		if u and u.parent:
+			print(u)
 			draw.lineBetweenCities(u.payload, u.parent.payload, screen, draw.RED)
 
 		# Draw shortest path from destination to start
 		elif not g.searching and not finishedDrawing:
-			destination = findCityVertice(g, 'Seattle')
+			destination = findCityVertice(g, 'Los Angeles')
 			v = destination
 			while v.parent is not None:
 				old = v
@@ -232,4 +260,4 @@ if __name__ == '__main__':
 
 
 		pygame.display.flip()
-		clock.tick(60)
+		clock.tick(1)
