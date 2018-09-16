@@ -2,3 +2,5 @@
 .env
 *.exe
 *.stackdump
+__pycache__
+*.pyc
