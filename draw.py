@@ -4,8 +4,9 @@ size = width, height = 1600, 950
 
 BLUE = (10, 125, 200)
 RED = (235, 40, 20)
-BLACK = (0, 0, 0)
+BLACK = (20, 20, 20)
 WHITE = (255, 255, 255)
+GREEN = (20, 255, 100)
 
 def drawCities(graph, highlightEdgeTest, screen, font):
 	for v in graph.getVertices():
@@ -14,7 +15,7 @@ def drawCities(graph, highlightEdgeTest, screen, font):
 		x, y = pointToCoords(city['latitude'], city['longitude'])
 		
 		pygame.draw.circle(screen, BLUE, (x, y), 10)
-		drawText(city['city'], (x, y), font, screen)
+		# drawText(city['city'], (x, y), font, screen)
 
 		for v2 in v.getConnections():
 			distance = v.getCost(v2)
@@ -29,7 +30,7 @@ def drawCities(graph, highlightEdgeTest, screen, font):
 				lineColor = BLUE
 
 			pygame.draw.line(screen, lineColor, (x, y), (x2, y2), 2)
-			drawText(str(round(distance)), midPoint, font, screen)
+			# drawText(str(round(distance)), midPoint, font, screen)
 
 def pointToCoords(lat, lon):
 	x = round(translate(lon, -130, -70, 0, width))

@@ -125,8 +125,15 @@ def graphConnectConditional(cities, connectionCheck):
 	return g
 
 
+def findCityVertice(graph, cityName):
+	for v in graph:
+		if v.payload['city'] == cityName:
+			return v
+	return None
+
+
 if __name__ == '__main__':
-	with open('cities_partial.json') as f:
+	with open('cities.json') as f:
 		cities = json.load(f)
 
 	
@@ -135,10 +142,10 @@ if __name__ == '__main__':
 		return distanceBetweenPoints(
                     city1['latitude'], city1['longitude'],
                     city2['latitude'], city2['longitude']
-                ) < 900
+                ) < 250
 
 	g = graphConnectConditional(cities, withinMiles)
-	g.print()
+	# g.print()
 
 
 	# Display
@@ -162,7 +169,8 @@ if __name__ == '__main__':
 	COMPLETELY_EXPLORED = 2
 
 	# initialize BFS
-	start = g.vertices[len(g.getVertices()) - 1]
+	start = findCityVertice(g, 'Miami')
+	destination = findCityVertice(g, 'Seattle')
 	for v in g:
 		v.state = UNDISCOVERED
 		v.parent = None
@@ -174,6 +182,7 @@ if __name__ == '__main__':
 	discovered.append(start)
 
 	done = False
+	finishedDrawing = False
 	while not done:
 		for event in pygame.event.get():
 			if event.type == pygame.QUIT:
@@ -190,7 +199,6 @@ if __name__ == '__main__':
 				redSaturation += 20
 				draw.lineBetweenCities(parent.payload, u.payload, screen, draw.RED)
 
-			print(u.payload['city'])
 			for v in u.getConnections():
 				# process edge (u, v) here
 				if v.state == UNDISCOVERED:
@@ -198,6 +206,18 @@ if __name__ == '__main__':
 					v.parent = u
 					discovered.append(v)
 			u.state = COMPLETELY_EXPLORED
+		# Draw shortest path from destination to start
+		elif not finishedDrawing:
+			print('finding shortest path...')
+			v = destination
+			while v.parent is not None:
+				old = v
+				new = v.parent
+				draw.lineBetweenCities(old.payload, new.payload, screen, draw.GREEN)
+				v = new
+			finishedDrawing = True
+
+
 
 		pygame.display.flip()
-		clock.tick(0.3)
+		clock.tick(60)
