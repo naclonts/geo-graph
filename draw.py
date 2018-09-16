@@ -7,7 +7,7 @@ RED = (235, 40, 20)
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 
-def drawCities(graph, screen, font):
+def drawCities(graph, highlightEdgeTest, screen, font):
 	for v in graph.getVertices():
 		city = v.payload
 
@@ -17,23 +17,31 @@ def drawCities(graph, screen, font):
 		drawText(city['city'], (x, y), font, screen)
 
 		for v2 in v.getConnections():
+			distance = v.getCost(v2)
 			city2 = v2.payload
 			x2, y2 = pointToCoords(city2['latitude'], city2['longitude'])
 
 			midPoint = ((x+x2)/2, (y+y2)/2)
 
-			lineColor = BLUE
-			distance = v.getCost(v2)
-			if distance < 1000:
+			if highlightEdgeTest(v, v2):
 				lineColor = RED
+			else:
+				lineColor = BLUE
 
-			pygame.draw.line(screen, lineColor, (x, y), (x2, y2), 1)
+			pygame.draw.line(screen, lineColor, (x, y), (x2, y2), 2)
 			drawText(str(round(distance)), midPoint, font, screen)
 
 def pointToCoords(lat, lon):
 	x = round(translate(lon, -130, -70, 0, width))
-	y = round(translate(lat, 45, 25, 0, height))
+	y = round(translate(lat, 50, 25, 0, height))
 	return (x, y)
+
+
+def lineBetweenCities(city1, city2, screen, lineColor):
+	x1, y1 = pointToCoords(city1['latitude'], city1['longitude'])
+	x2, y2 = pointToCoords(city2['latitude'], city2['longitude'])
+	pygame.draw.line(screen, lineColor, (x1, y1), (x2, y2), 3)
+
 
 def drawText(text, coords, font, screen):
 	x, y = coords

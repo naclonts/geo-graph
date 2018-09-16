@@ -1,5 +1,6 @@
 import json
 from pprint import pprint
+import collections
 import draw
 import pygame
 import math
@@ -11,8 +12,11 @@ class Vertex:
 		# connectedTo - keys are Vertex objects and values are costs / weights
 		self.connectedTo = {}
 	
-	def addNeighbor(self, nbr, cost=0):
+	def addNeighbor(self, nbr, cost=0, directed=False):
 		self.connectedTo[nbr] = cost
+		# Connect neighbor if this is an undirected graph
+		if not directed and not nbr.isConnectedTo(self):
+			nbr.addNeighbor(self, cost, directed)
 
 	def isConnectedTo(self, vertex):
 		return vertex in self.connectedTo
@@ -29,12 +33,16 @@ class Vertex:
 	def __str__(self):
 		return str(self.id) + ' connectedTo: ' + \
 			str([x.getId() for x in self.connectedTo])
+	
+	def __repr__(self):
+		return 'Vertex ' + str(self.id)
 
 
 class Graph:
 	def __init__(self):
 		self.vertices = {}
 		self.numVertices = 0
+		self.directed = False
 
 	def addVertex(self, key, payload=None):
 		self.numVertices += 1
@@ -56,7 +64,7 @@ class Graph:
 			self.addVertex(f)
 		if t not in self.vertices:
 			self.addVertex(t)
-		self.vertices[f].addNeighbor(self.vertices[t], cost)
+		self.vertices[f].addNeighbor(self.vertices[t], cost, self.directed)
 	
 	def getVertices(self):
 		return self.vertices.values()
@@ -70,7 +78,7 @@ class Graph:
 
 
 def distanceBetweenPoints(lat1, lon1, lat2, lon2):
-	"""Miles between two points on the earth based in lat/lon (in degrees)."""
+	"""Returns miles between two points on the earth based on lat/lon (in degrees)."""
 	r = 6371e3  # earth's radius in meters
 	p1 = math.radians(lat1)
 	p2 = math.radians(lat2)
@@ -91,8 +99,24 @@ def graphAllConnected(cities):
 		city['id'] = i
 		g.addVertex(i, city)
 		for existingVertex in g.getVertices():
-			if existingVertex.getId() != city['id']:
-				city2 = existingVertex.payload
+			city2 = existingVertex.payload
+			if city2['id'] != city['id']:
+				d = distanceBetweenPoints(
+					city['latitude'], city['longitude'],
+					city2['latitude'], city2['longitude']
+				)
+				g.addEdge(i, existingVertex.getId(), d)
+	return g
+
+
+def graphConnectConditional(cities, connectionCheck):
+	g = Graph()
+	for i, city in enumerate(cities):
+		city['id'] = i
+		g.addVertex(i, city)
+		for existingVertex in g.getVertices():
+			city2 = existingVertex.payload
+			if city2['id'] != city['id'] and connectionCheck(city, city2):
 				d = distanceBetweenPoints(
 					city['latitude'], city['longitude'],
 					city2['latitude'], city2['longitude']
@@ -106,7 +130,14 @@ if __name__ == '__main__':
 		cities = json.load(f)
 
 	
-	g = graphAllConnected(cities)
+	# g = graphAllConnected(cities)
+	def withinMiles(city1, city2):
+		return distanceBetweenPoints(
+                    city1['latitude'], city1['longitude'],
+                    city2['latitude'], city2['longitude']
+                ) < 900
+
+	g = graphConnectConditional(cities, withinMiles)
 	g.print()
 
 
@@ -116,8 +147,31 @@ if __name__ == '__main__':
 	pygame.font.init()
 	font = pygame.font.SysFont('monospace', 15)
 
-	draw.drawCities(g, screen, font)
+	def highlightEdge(v1, v2):
+		return False
+		distance = v1.getCost(v2)
+		if distance < 1000:
+			return True
+		return False
+
+	draw.drawCities(g, highlightEdge, screen, font)
 	pygame.display.flip()
+
+	UNDISCOVERED = 0
+	DISCOVERED = 1
+	COMPLETELY_EXPLORED = 2
+
+	# initialize BFS
+	start = g.vertices[len(g.getVertices()) - 1]
+	for v in g:
+		v.state = UNDISCOVERED
+		v.parent = None
+	start.state = DISCOVERED
+	u = None
+	redSaturation = 50
+	
+	discovered = collections.deque()
+	discovered.append(start)
 
 	done = False
 	while not done:
@@ -125,4 +179,25 @@ if __name__ == '__main__':
 			if event.type == pygame.QUIT:
 				pygame.quit()
 				done = True
-		clock.tick(60)
+
+		# breadth-first search
+		if len(discovered) > 0:
+			last = u
+			u = discovered.popleft()
+			# process vertex u here
+			parent = u.parent
+			if parent is not None:
+				redSaturation += 20
+				draw.lineBetweenCities(parent.payload, u.payload, screen, draw.RED)
+
+			print(u.payload['city'])
+			for v in u.getConnections():
+				# process edge (u, v) here
+				if v.state == UNDISCOVERED:
+					v.state = DISCOVERED
+					v.parent = u
+					discovered.append(v)
+			u.state = COMPLETELY_EXPLORED
+
+		pygame.display.flip()
+		clock.tick(0.3)
