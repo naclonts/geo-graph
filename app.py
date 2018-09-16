@@ -2,8 +2,15 @@ import json
 from pprint import pprint
 import collections
 import draw
+from enum import Enum
 import pygame
 import math
+
+class VertexState(Enum):
+	UNDISCOVERED = 0
+	DISCOVERED = 1
+	COMPLETELY_EXPLORED = 2
+
 
 class Vertex:
 	def __init__(self, key, payload=None):
@@ -11,6 +18,9 @@ class Vertex:
 		self.payload = payload
 		# connectedTo - keys are Vertex objects and values are costs / weights
 		self.connectedTo = {}
+		# search variables
+		self.state = None
+		self.parent = None
 	
 	def addNeighbor(self, nbr, cost=0, directed=False):
 		self.connectedTo[nbr] = cost
@@ -43,6 +53,7 @@ class Graph:
 		self.vertices = {}
 		self.numVertices = 0
 		self.directed = False
+		self.searching = False
 
 	def addVertex(self, key, payload=None):
 		self.numVertices += 1
@@ -75,6 +86,33 @@ class Graph:
 
 	def __iter__(self):
 		return iter(self.vertices.values())
+
+	def breadthFirstSearch(self, start):
+		"""BFS generator yielding each vertex as it is explored."""
+		self.searching = True
+
+		# initialize structure
+		for u in self:
+			u.state = VertexState.UNDISCOVERED
+			u.parent = None
+		start.state = VertexState.DISCOVERED
+		u = None
+
+		discovered = collections.deque()
+		discovered.append(start)
+		while len(discovered) > 0:
+			u = discovered.popleft()
+			yield u
+
+			for v in u.getConnections():
+				# process edge (u, v) here
+				if v.state == VertexState.UNDISCOVERED:
+					v.state = VertexState.DISCOVERED
+					v.parent = u
+					discovered.append(v)
+			u.state = VertexState.COMPLETELY_EXPLORED
+
+		self.searching = False
 
 
 def distanceBetweenPoints(lat1, lon1, lat2, lon2):
@@ -164,22 +202,9 @@ if __name__ == '__main__':
 	draw.drawCities(g, highlightEdge, screen, font)
 	pygame.display.flip()
 
-	UNDISCOVERED = 0
-	DISCOVERED = 1
-	COMPLETELY_EXPLORED = 2
-
 	# initialize BFS
 	start = findCityVertice(g, 'Miami')
-	destination = findCityVertice(g, 'Seattle')
-	for v in g:
-		v.state = UNDISCOVERED
-		v.parent = None
-	start.state = DISCOVERED
-	u = None
-	redSaturation = 50
-	
-	discovered = collections.deque()
-	discovered.append(start)
+	bfs = g.breadthFirstSearch(start)
 
 	done = False
 	finishedDrawing = False
@@ -189,26 +214,14 @@ if __name__ == '__main__':
 				pygame.quit()
 				done = True
 
-		# breadth-first search
-		if len(discovered) > 0:
-			last = u
-			u = discovered.popleft()
-			# process vertex u here
-			parent = u.parent
-			if parent is not None:
-				redSaturation += 20
-				draw.lineBetweenCities(parent.payload, u.payload, screen, draw.RED)
+		# process vertex u here
+		u = next(bfs, None)
+		if u and u.parent:
+			draw.lineBetweenCities(u.payload, u.parent.payload, screen, draw.RED)
 
-			for v in u.getConnections():
-				# process edge (u, v) here
-				if v.state == UNDISCOVERED:
-					v.state = DISCOVERED
-					v.parent = u
-					discovered.append(v)
-			u.state = COMPLETELY_EXPLORED
 		# Draw shortest path from destination to start
-		elif not finishedDrawing:
-			print('finding shortest path...')
+		elif not g.searching and not finishedDrawing:
+			destination = findCityVertice(g, 'Seattle')
 			v = destination
 			while v.parent is not None:
 				old = v
@@ -216,7 +229,6 @@ if __name__ == '__main__':
 				draw.lineBetweenCities(old.payload, new.payload, screen, draw.GREEN)
 				v = new
 			finishedDrawing = True
-
 
 
 		pygame.display.flip()
