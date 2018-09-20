@@ -2,144 +2,12 @@ import json
 from pprint import pprint
 import collections
 import draw
-from enum import Enum
+import graph
 import pygame
+import random
 import math
+import heapq # Priority queue
 
-class VertexState(Enum):
-	UNDISCOVERED = 0
-	DISCOVERED = 1
-	COMPLETELY_EXPLORED = 2
-
-
-class Vertex:
-	def __init__(self, key, payload=None):
-		self.id = key
-		self.payload = payload
-		# connectedTo - keys are Vertex objects and values are costs / weights
-		self.connectedTo = {}
-		# search variables
-		self.state = None
-		self.parent = None
-	
-	def addNeighbor(self, nbr, cost=0, directed=False):
-		self.connectedTo[nbr] = cost
-		# Connect neighbor if this is an undirected graph
-		if not directed and not nbr.isConnectedTo(self):
-			nbr.addNeighbor(self, cost, directed)
-
-	def isConnectedTo(self, vertex):
-		return vertex in self.connectedTo
-
-	def getConnections(self):
-		return self.connectedTo.keys()
-	
-	def getId(self):
-		return self.id
-	
-	def getCost(self, nbr):
-		return self.connectedTo[nbr]
-
-	def __str__(self):
-		return str(self.id) + ' connectedTo: ' + \
-			str([x.getId() for x in self.connectedTo])
-	
-	def __repr__(self):
-		return 'Vertex ' + str(self.id)
-
-
-class Graph:
-	def __init__(self):
-		self.vertices = {}
-		self.numVertices = 0
-		self.directed = False
-		self.searching = False
-
-	def addVertex(self, key, payload=None):
-		self.numVertices += 1
-		newVertex = Vertex(key, payload)
-		self.vertices[newVertex.getId()] = newVertex
-		return newVertex
-	
-	def getVertex(self, n):
-		if n in self.vertices:
-			return self.vertices[n]
-		else:
-			return None
-
-	def __contains__(self, n):
-		return n in self.vertices
-	
-	def addEdge(self, f, t, cost=0):
-		if f not in self.vertices:
-			self.addVertex(f)
-		if t not in self.vertices:
-			self.addVertex(t)
-		self.vertices[f].addNeighbor(self.vertices[t], cost, self.directed)
-	
-	def getVertices(self):
-		return self.vertices.values()
-
-	def print(self):
-		for v1 in self.vertices.values():
-			print(v1)
-
-	def __iter__(self):
-		return iter(self.vertices.values())
-
-	def breadthFirstSearch(self, start, depthFirst=False):
-		"""BFS generator yielding each vertex as it is explored."""
-		self.searching = True
-
-		# initialize structure
-		for u in self:
-			u.state = VertexState.UNDISCOVERED
-			u.parent = None
-		start.state = VertexState.DISCOVERED
-		u = None
-
-		discovered = collections.deque()
-		discovered.append(start)
-		while len(discovered) > 0:
-			if depthFirst:
-				u = discovered.pop()
-			else:
-				u = discovered.popleft()
-			yield u
-
-			for v in u.getConnections():
-				# process edge (u, v) here
-				if v.state == VertexState.UNDISCOVERED:
-					v.state = VertexState.DISCOVERED
-					v.parent = u
-					discovered.append(v)
-			u.state = VertexState.COMPLETELY_EXPLORED
-
-		self.searching = False
-
-	def depthFirstSearch(self, start):
-		"""DFS generator. Yields each explored vertex."""
-		self.searching = True
-
-		# initialize structure
-		for u in self:
-			u.state = VertexState.UNDISCOVERED
-		for u in self:
-			if u.state == VertexState.UNDISCOVERED:
-				# new component
-				dfs = self._dfs(u)
-				yield from dfs
-
-		self.searching = False
-
-	def _dfs(self, u):
-		u.state = VertexState.DISCOVERED
-		yield u
-		for v in u.getConnections():
-			if v.state == VertexState.UNDISCOVERED:
-				v.parent = u
-				yield from self._dfs(v)
-		u.state = VertexState.COMPLETELY_EXPLORED
 
 
 def distanceBetweenPoints(lat1, lon1, lat2, lon2):
@@ -175,7 +43,7 @@ def graphAllConnected(cities):
 
 
 def graphConnectConditional(cities, connectionCheck):
-	g = Graph()
+	g = graph.Graph()
 	for i, city in enumerate(cities):
 		city['id'] = i
 		g.addVertex(i, city)
@@ -190,6 +58,55 @@ def graphConnectConditional(cities, connectionCheck):
 	return g
 
 
+# def dijkstra(graph, initial):
+# 	# Check reading bookmarks
+# 	visited = {initial: 0}
+# 	path = {}
+
+# 	vertices = set(graph.getVertices())
+# 	while vertices:
+# 		minVertice = None
+# 		for v in vertices:
+# 			if v in visited:
+# 				if minVertice is None:
+# 					minVertice = v
+# 				elif visited[v] < visited[minVertice]:
+# 					minVertice = v
+
+# 			if minVertice is None:
+# 				break
+			
+# 			vertices.remove(minVertice)
+# 			currentWeight = visited[minVertice]
+
+# 			for u in minVertice.getConnections():
+# 				weight = currentWeight + minVertice.getCost(u)
+# 				if u not in visited or weight < visited[u]:
+# 					visited[u] = weight
+# 					path[u] = minVertice
+
+# 	return visited, path
+
+class PriorityQueue:
+	def __init__(self):
+		self.heap = []
+	
+	def buildHeap(self, initial):
+		"""Accepts list of key-value pairs."""
+		pq
+
+
+def dijkstra(g, start):
+	pq = []
+	start.setDistance(0)
+	pq = [v for v in g.getVertices()]
+	heapq.heapify(pq)
+	print(pq)
+
+
+
+
+
 def findCityVertice(graph, cityName):
 	for v in graph:
 		if v.payload['city'] == cityName:
@@ -197,19 +114,42 @@ def findCityVertice(graph, cityName):
 	return None
 
 
+MODE = 'partial' # or 'all'
+
 if __name__ == '__main__':
-	with open('cities_partial.json') as f:
+	if MODE == 'partial':
+		citiesFile = 'cities_partial.json'
+		distanceThreshold = 1000
+		fps = 10
+	else:
+		citiesFile = 'cities.json'
+		distanceThreshold = 250
+		fps = 60
+
+	with open(citiesFile) as f:
 		cities = json.load(f)
 
+	
 	
 	# g = graphAllConnected(cities)
 	def withinMiles(city1, city2):
 		return distanceBetweenPoints(
                     city1['latitude'], city1['longitude'],
                     city2['latitude'], city2['longitude']
-                ) < 1000
+                ) < distanceThreshold
 
 	g = graphConnectConditional(cities, withinMiles)
+
+	# Origin point for the traversal
+	start = findCityVertice(g, 'Virginia Beach')
+
+	# visited, path = dijkstra(g, start)
+	# print(path)
+
+
+
+	############################################################################
+	# Below here is the graphics
 
 
 	# Display
@@ -229,9 +169,10 @@ if __name__ == '__main__':
 	pygame.display.flip()
 
 	# initialize search
-	start = findCityVertice(g, 'New York')
-	# bfs = g.breadthFirstSearch(start)
-	dfs = g.depthFirstSearch(start)
+	bfs = g.breadthFirstSearch(start)
+	# dfs = g.depthFirstSearch(start)
+	dijkstra(g, start)
+
 
 	done = False
 	finishedDrawing = False
@@ -242,9 +183,8 @@ if __name__ == '__main__':
 				done = True
 
 		# process vertex u here
-		u = next(dfs, None)
+		u = next(bfs, None)
 		if u and u.parent:
-			print(u)
 			draw.lineBetweenCities(u.payload, u.parent.payload, screen, draw.RED)
 
 		# Draw shortest path from destination to start
@@ -258,6 +198,16 @@ if __name__ == '__main__':
 				v = new
 			finishedDrawing = True
 
-
+		# # muddy up the screen a bit
+		# for v in g.getVertices():
+		# 	threshold = math.sin(pygame.time.get_ticks() * 10)
+		# 	if random.random() < threshold:
+		# 		sign = 1
+		# 	else:
+		# 		sign = -1
+		# 	print(sign)
+		# 	# v.payload['latitude'] += (0.02 * sign)
+		# draw.drawCities(g, highlightEdge, screen, font)
+		# draw.screenCheck(screen)
 		pygame.display.flip()
-		clock.tick(1)
+		clock.tick(fps)

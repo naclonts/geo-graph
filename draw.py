@@ -8,6 +8,12 @@ BLACK = (20, 20, 20)
 WHITE = (255, 255, 255)
 GREEN = (20, 255, 100)
 
+def screenCheck(screen):
+	s = pygame.Surface((width, height))
+	s.set_alpha(128)
+	s.fill((40, 40, 40))
+	screen.blit(s, (0, 0))
+
 def drawCities(graph, highlightEdgeTest, screen, font):
 	for v in graph.getVertices():
 		city = v.payload
@@ -15,7 +21,7 @@ def drawCities(graph, highlightEdgeTest, screen, font):
 		x, y = pointToCoords(city['latitude'], city['longitude'])
 		
 		pygame.draw.circle(screen, BLUE, (x, y), 10)
-		# drawText(city['city'], (x, y), font, screen)
+		drawText(city['city'], (x, y), font, screen)
 
 		for v2 in v.getConnections():
 			distance = v.getCost(v2)
