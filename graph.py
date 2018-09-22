@@ -103,14 +103,19 @@ class Graph:
 	def __iter__(self):
 		return iter(self.vertices.values())
 
+	def reset(self):
+		"""Clear calculated values used by algorithms."""
+		for u in self:
+			u.state = VertexState.UNDISCOVERED
+			u.parent = None
+			u.setDistance(math.inf)
+
 	def breadthFirstSearch(self, start, depthFirst=False):
 		"""BFS generator yielding each vertex as it is explored."""
 		self.searching = True
 
 		# initialize structure
-		for u in self:
-			u.state = VertexState.UNDISCOVERED
-			u.parent = None
+		self.reset()
 		start.state = VertexState.DISCOVERED
 		u = None
 

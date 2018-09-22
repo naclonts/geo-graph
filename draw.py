@@ -7,6 +7,9 @@ RED = (235, 40, 20)
 BLACK = (20, 20, 20)
 WHITE = (255, 255, 255)
 GREEN = (20, 255, 100)
+YELLOW = (235, 235, 20)
+
+highlightColors = (RED, WHITE, GREEN, YELLOW)
 
 def screenCheck(screen):
 	s = pygame.Surface((width, height))
@@ -38,11 +41,20 @@ def drawCities(graph, highlightEdgeTest, screen, font):
 			pygame.draw.line(screen, lineColor, (x, y), (x2, y2), 2)
 			# drawText(str(round(distance)), midPoint, font, screen)
 
+MIN_LON = -130
+MAX_LON = -70
+MIN_LAT = 50
+MAX_LAT = 25
+
 def pointToCoords(lat, lon):
-	x = round(translate(lon, -130, -70, 0, width))
-	y = round(translate(lat, 50, 25, 0, height))
+	x = round(translate(lon, MIN_LON, MAX_LON, 0, width))
+	y = round(translate(lat, MIN_LAT, MAX_LAT, 0, height))
 	return (x, y)
 
+def coordsToPoint(x, y):
+	lat = translate(y, 0, height, MIN_LAT, MAX_LAT)
+	lon = translate(x, 0, width, MIN_LON, MAX_LON)
+	return (lat, lon)
 
 def lineBetweenCities(city1, city2, screen, lineColor):
 	x1, y1 = pointToCoords(city1['latitude'], city1['longitude'])

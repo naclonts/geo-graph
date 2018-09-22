@@ -6,7 +6,9 @@ import graph
 import pygame
 import random
 import math
+import sys
 import heapq # Priority queue
+from priorityQueue import PriorityQueue
 
 
 
@@ -27,7 +29,7 @@ def distanceBetweenPoints(lat1, lon1, lat2, lon2):
 
 
 def graphAllConnected(cities):
-	g = Graph()
+	g = graph.Graph()
 	for i, city in enumerate(cities):
 		city['id'] = i
 		g.addVertex(i, city)
@@ -58,52 +60,25 @@ def graphConnectConditional(cities, connectionCheck):
 	return g
 
 
-# def dijkstra(graph, initial):
-# 	# Check reading bookmarks
-# 	visited = {initial: 0}
-# 	path = {}
-
-# 	vertices = set(graph.getVertices())
-# 	while vertices:
-# 		minVertice = None
-# 		for v in vertices:
-# 			if v in visited:
-# 				if minVertice is None:
-# 					minVertice = v
-# 				elif visited[v] < visited[minVertice]:
-# 					minVertice = v
-
-# 			if minVertice is None:
-# 				break
-			
-# 			vertices.remove(minVertice)
-# 			currentWeight = visited[minVertice]
-
-# 			for u in minVertice.getConnections():
-# 				weight = currentWeight + minVertice.getCost(u)
-# 				if u not in visited or weight < visited[u]:
-# 					visited[u] = weight
-# 					path[u] = minVertice
-
-# 	return visited, path
-
-class PriorityQueue:
-	def __init__(self):
-		self.heap = []
-	
-	def buildHeap(self, initial):
-		"""Accepts list of key-value pairs."""
-		pq
 
 
 def dijkstra(g, start):
-	pq = []
+	print('Finding shortest paths to ' + start.payload['city'])
+	g.reset()
+	pq = PriorityQueue()
 	start.setDistance(0)
-	pq = [v for v in g.getVertices()]
-	heapq.heapify(pq)
-	print(pq)
-
-
+	pq.buildHeap([(v.getDistance(), v) for v in g])
+	while not pq.isEmpty():
+		currentVert = pq.delMin()
+		print('Looking at vertice ' + currentVert.payload['city'])
+		for nextVert in currentVert.getConnections():
+			newDist = currentVert.getDistance() \
+					+ currentVert.getCost(nextVert)
+			if newDist < nextVert.getDistance():
+				print('Setting {0}s predecessor to {1} (distance {2})'.format(nextVert.payload['city'], currentVert.payload['city'], round(newDist)))
+				nextVert.setDistance(newDist)
+				nextVert.parent = currentVert
+				pq.decreaseKey(nextVert, newDist)
 
 
 
@@ -114,16 +89,29 @@ def findCityVertice(graph, cityName):
 	return None
 
 
+def findNearestCity(g, lat, lon):
+	"""Find city nearest the given latitude and longitude."""
+	closest = None
+	minDistance = math.inf
+	for v in g:
+		d = distanceBetweenPoints(lat, lon, v.payload['latitude'], v.payload['longitude'])
+		if d < minDistance:
+			minDistance = d
+			closest = v
+	return closest
+
+
+
 MODE = 'partial' # or 'all'
 
 if __name__ == '__main__':
 	if MODE == 'partial':
 		citiesFile = 'cities_partial.json'
-		distanceThreshold = 1000
-		fps = 10
+		distanceThreshold = 500
+		fps = 5
 	else:
 		citiesFile = 'cities.json'
-		distanceThreshold = 250
+		distanceThreshold = 600
 		fps = 60
 
 	with open(citiesFile) as f:
@@ -139,13 +127,6 @@ if __name__ == '__main__':
                 ) < distanceThreshold
 
 	g = graphConnectConditional(cities, withinMiles)
-
-	# Origin point for the traversal
-	start = findCityVertice(g, 'Virginia Beach')
-
-	# visited, path = dijkstra(g, start)
-	# print(path)
-
 
 
 	############################################################################
@@ -169,45 +150,61 @@ if __name__ == '__main__':
 	pygame.display.flip()
 
 	# initialize search
-	bfs = g.breadthFirstSearch(start)
+	# bfs = g.breadthFirstSearch(start)
 	# dfs = g.depthFirstSearch(start)
+	start = findCityVertice(g, 'Boston')
 	dijkstra(g, start)
+	destination = findCityVertice(g, 'Denver')
 
 
 	done = False
 	finishedDrawing = False
+	listenForDestination = False
+	v = destination
+	color = draw.GREEN
 	while not done:
 		for event in pygame.event.get():
 			if event.type == pygame.QUIT:
+				print('Quitting!')
+				pygame.display.quit()
 				pygame.quit()
 				done = True
+				continue
+			elif event.type == pygame.MOUSEBUTTONDOWN:
+				color = random.choice(draw.highlightColors)
+				lat, lon = draw.coordsToPoint(event.pos[0], event.pos[1])
+				u = findNearestCity(g, lat, lon)
+				if listenForDestination:
+					v = u
+					listenForDestination = False
+					print('From ' + v.payload['city'])
+				else:
+					start = u
+					dijkstra(g, start)
+					listenForDestination = True
+					print('Going to ' + start.payload['city'])
 
 		# process vertex u here
-		u = next(bfs, None)
-		if u and u.parent:
-			draw.lineBetweenCities(u.payload, u.parent.payload, screen, draw.RED)
+		# u = next(bfs, None)
+		# if u and u.parent:
+		# 	draw.lineBetweenCities(u.payload, u.parent.payload, screen, draw.RED)
 
 		# Draw shortest path from destination to start
-		elif not g.searching and not finishedDrawing:
-			destination = findCityVertice(g, 'Los Angeles')
-			v = destination
-			while v.parent is not None:
-				old = v
-				new = v.parent
-				draw.lineBetweenCities(old.payload, new.payload, screen, draw.GREEN)
-				v = new
-			finishedDrawing = True
+		# elif not g.searching and not finishedDrawing:
+		# 	v = destination
+		# 	while v.parent is not None:
+		# 		old = v
+		# 		new = v.parent
+		# 		draw.lineBetweenCities(old.payload, new.payload, screen, draw.GREEN)
+		# 		v = new
+		# 	finishedDrawing = True
 
-		# # muddy up the screen a bit
-		# for v in g.getVertices():
-		# 	threshold = math.sin(pygame.time.get_ticks() * 10)
-		# 	if random.random() < threshold:
-		# 		sign = 1
-		# 	else:
-		# 		sign = -1
-		# 	print(sign)
-		# 	# v.payload['latitude'] += (0.02 * sign)
-		# draw.drawCities(g, highlightEdge, screen, font)
-		# draw.screenCheck(screen)
+		if v.parent is not None and not listenForDestination:
+			print(v)
+			old = v
+			new = v.parent
+			draw.lineBetweenCities(old.payload, new.payload, screen, color)
+			v = new
+	
 		pygame.display.flip()
 		clock.tick(fps)
