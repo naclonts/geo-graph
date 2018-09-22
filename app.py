@@ -1,8 +1,9 @@
 import json
 from pprint import pprint
-import collections
+import collections, enum
 import draw
 import graph
+import itertools
 import pygame
 import random
 import math
@@ -63,19 +64,18 @@ def graphConnectConditional(cities, connectionCheck):
 
 
 def dijkstra(g, start):
-	print('Finding shortest paths to ' + start.payload['city'])
+	# print('Finding shortest paths to ' + start.payload['city'])
 	g.reset()
 	pq = PriorityQueue()
 	start.setDistance(0)
 	pq.buildHeap([(v.getDistance(), v) for v in g])
 	while not pq.isEmpty():
 		currentVert = pq.delMin()
-		print('Looking at vertice ' + currentVert.payload['city'])
 		for nextVert in currentVert.getConnections():
 			newDist = currentVert.getDistance() \
 					+ currentVert.getCost(nextVert)
 			if newDist < nextVert.getDistance():
-				print('Setting {0}s predecessor to {1} (distance {2})'.format(nextVert.payload['city'], currentVert.payload['city'], round(newDist)))
+				# print('Setting {0}s predecessor to {1} (distance {2})'.format(nextVert.payload['city'], currentVert.payload['city'], round(newDist)))
 				nextVert.setDistance(newDist)
 				nextVert.parent = currentVert
 				pq.decreaseKey(nextVert, newDist)
@@ -101,17 +101,17 @@ def findNearestCity(g, lat, lon):
 	return closest
 
 
-
-MODE = 'partial' # or 'all'
+Modes = enum.Enum('Modes', 'ALL PARTIAL')
+mode = Modes.ALL
 
 if __name__ == '__main__':
-	if MODE == 'partial':
+	if mode == Modes.PARTIAL:
 		citiesFile = 'cities_partial.json'
 		distanceThreshold = 500
 		fps = 5
 	else:
 		citiesFile = 'cities.json'
-		distanceThreshold = 600
+		distanceThreshold = 190
 		fps = 60
 
 	with open(citiesFile) as f:
@@ -161,6 +161,7 @@ if __name__ == '__main__':
 	finishedDrawing = False
 	listenForDestination = False
 	v = destination
+	colors = itertools.cycle(draw.highlightColors)
 	color = draw.GREEN
 	while not done:
 		for event in pygame.event.get():
@@ -171,18 +172,25 @@ if __name__ == '__main__':
 				done = True
 				continue
 			elif event.type == pygame.MOUSEBUTTONDOWN:
-				color = random.choice(draw.highlightColors)
 				lat, lon = draw.coordsToPoint(event.pos[0], event.pos[1])
 				u = findNearestCity(g, lat, lon)
 				if listenForDestination:
 					v = u
 					listenForDestination = False
-					print('From ' + v.payload['city'])
+					city = v.payload
+					print('From ' + city['city'])
+					x, y = draw.pointToCoords(city['latitude'], city['longitude'])
+					pygame.draw.circle(screen, color, (x, y), 10)
+
 				else:
 					start = u
 					dijkstra(g, start)
 					listenForDestination = True
-					print('Going to ' + start.payload['city'])
+					color = next(colors)
+					city = start.payload
+					print('Going to ' + city['city'])
+					x, y = draw.pointToCoords(city['latitude'], city['longitude'])
+					pygame.draw.circle(screen, color, (x, y), 10)
 
 		# process vertex u here
 		# u = next(bfs, None)
@@ -200,7 +208,6 @@ if __name__ == '__main__':
 		# 	finishedDrawing = True
 
 		if v.parent is not None and not listenForDestination:
-			print(v)
 			old = v
 			new = v.parent
 			draw.lineBetweenCities(old.payload, new.payload, screen, color)
