@@ -22,9 +22,9 @@ def drawCities(graph, highlightEdgeTest, screen, font):
 		city = v.payload
 
 		x, y = pointToCoords(city['latitude'], city['longitude'])
-		
+
 		pygame.draw.circle(screen, BLUE, (x, y), 10)
-		drawText(city['city'], (x, y), font, screen)
+		# drawText(city['city'], (x, y), font, screen) # draw city name
 
 		for v2 in v.getConnections():
 			distance = v.getCost(v2)

@@ -105,6 +105,8 @@ Modes = enum.Enum('Modes', 'ALL PARTIAL')
 mode = Modes.ALL
 
 if __name__ == '__main__':
+	populationThreshold = 75000
+
 	if mode == Modes.PARTIAL:
 		citiesFile = 'cities_partial.json'
 		distanceThreshold = 500
@@ -117,8 +119,8 @@ if __name__ == '__main__':
 	with open(citiesFile) as f:
 		cities = json.load(f)
 
-	
-	
+	cities = [city for city in cities if int(city['population']) > populationThreshold]
+
 	# g = graphAllConnected(cities)
 	def withinMiles(city1, city2):
 		return distanceBetweenPoints(
@@ -212,6 +214,6 @@ if __name__ == '__main__':
 			new = v.parent
 			draw.lineBetweenCities(old.payload, new.payload, screen, color)
 			v = new
-	
+
 		pygame.display.flip()
 		clock.tick(fps)
